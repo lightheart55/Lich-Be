@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#009688" />
+    <meta name="description" content="Ứng dụng tính tuổi bé và tra cứu lịch tiêm chủng TCMR 2024">
+    
+    <!-- Meta tags cho iOS (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bé Yêu">
+    
+    <title>Bé Yêu Tracker</title>
+    
+    <!-- PWA Manifest (Embedded Data URI) -->
+    <link rel="manifest" id="my-manifest-placeholder">
+    <script>
+        const manifest = {
+            "name": "Bé Yêu Tracker",
+            "short_name": "Bé Yêu",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#E0F2F1",
+            "theme_color": "#009688",
+            "orientation": "portrait",
+            "icons": [
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/3063/3063176.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/3063/3063176.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.querySelector('#my-manifest-placeholder').setAttribute('href', manifestURL);
+    </script>
+    
+    <!-- Icon iOS -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063176.png">
+    
+    <!-- Thư viện giao diện (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Cấu hình Tailwind -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+            colors: {
+              baby: {
+                blue: '#E0F2F1', pink: '#FCE4EC', dark: '#263238', accent: '#009688', soft: '#80CBC4',
+                header: '#00838F', rowOdd: '#E0F7FA', rowEven: '#FFFFFF'
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+              'slide-up': 'slideUp 0.7s ease-out',
+            },
+            keyframes: {
+              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+              slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { background-color: #f8fafc; -webkit-font-smoothing: antialiased; overscroll-behavior-y: contain; }
+      * { -webkit-tap-highlight-color: transparent; }
+      select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+      
+      /* Table Styles */
+      .vaccine-table th, .vaccine-table td {
+        border: 1px solid #e2e8f0;
+        padding: 8px 4px;
+        text-align: center;
+        font-size: 12px;
+      }
+      .vaccine-table th {
+        background-color: #00838F;
+        color: white;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .vaccine-table td {
+        vertical-align: middle;
+      }
+      /* Highlight active column */
+      .active-col {
+        background-color: #FFF9C4 !important; /* Vàng nhạt */
+        border-left: 2px solid #FBC02D;
+        border-right: 2px solid #FBC02D;
+      }
+      .active-header {
+        background-color: #FBC02D !important; /* Vàng đậm cho header */
+        color: #374151 !important;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8 px-4 font-sans text-slate-800">
+
+    <div class="max-w-2xl mx-auto flex flex-col items-center">
+        
+        <!-- HEADER -->
+        <header class="text-center mb-8 w-full">
+            <div class="inline-flex items-center justify-center p-3 bg-white rounded-full shadow-md mb-4 text-baby-accent">
+                <i data-lucide="calculator" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2 tracking-tight">Bé Yêu Tracker</h1>
+            <p class="text-gray-500">Tra cứu tuổi & Lịch tiêm chủng (Mới nhất 2024)</p>
+        </header>
+
+        <!-- INPUT CARD -->
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden mb-6 transition-all hover:shadow-2xl relative z-10 border-t-4 border-baby-accent">
+            <div class="p-6 space-y-5">
+                
+                <!-- Ngày sinh -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <div class="bg-baby-blue p-1.5 rounded-md text-baby-accent"><i data-lucide="baby" class="w-4 h-4"></i></div>
+                        Ngày sinh của bé
+                    </label>
+                    <div class="grid grid-cols-3 gap-3" id="birth-picker"></div>
+                    <div id="birth-msg" class="mt-2 text-xs text-gray-400 flex items-center gap-1 justify-center">
+                        <i data-lucide="calendar-check" class="w-3 h-3"></i><span>Vui lòng chọn đầy đủ ngày sinh</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-center -my-3 opacity-30 relative z-0 py-2">
+                    <i data-lucide="arrow-down" class="w-6 h-6 text-gray-400"></i>
+                </div>
+
+                <!-- Ngày tính -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <div class="bg-amber-100 p-1.5 rounded-md text-amber-600"><i data-lucide="calendar-range" class="w-4 h-4"></i></div>
+                        Tính đến ngày
+                    </label>
+                    <div class="grid grid-cols-3 gap-3" id="target-picker"></div>
+                </div>
+
+                <!-- Thông báo Lỗi -->
+                <div id="error-box" class="hidden p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4"></i><span id="error-text"></span>
+                </div>
+
+                <!-- Nút Reset -->
+                <div id="action-area" class="pt-2 flex justify-end hidden">
+                    <button onclick="resetApp()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-baby-accent hover:bg-baby-blue/30 rounded-lg transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KẾT QUẢ (Mặc định ẩn) -->
+        <div id="result-container" class="w-full max-w-md animate-slide-up hidden pb-10">
+            
+            <!-- Card Tuổi -->
+            <div class="bg-gradient-to-br from-baby-accent to-teal-600 rounded-2xl shadow-lg p-6 text-white text-center relative overflow-hidden mb-6">
+                <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="baby" class="w-32 h-32 text-white"></i></div>
+                <h2 class="text-lg font-medium opacity-90 mb-1 flex items-center justify-center gap-2">Kết quả tính tuổi</h2>
+                
+                <div id="main-age-display" class="flex items-baseline justify-center gap-2 my-4 min-h-[60px]"></div>
+                
+                <div id="detail-age-display" class="mt-6 pt-6 border-t border-white/20 grid grid-cols-2 gap-4 hidden">
+                    <div class="flex flex-col items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                        <div class="flex items-center gap-2 text-sm opacity-80 mb-1"><i data-lucide="calendar-days" class="w-3 h-3"></i><span>Tổng số tháng</span></div>
+                        <span id="total-months" class="text-xl font-bold">0</span>
+                    </div>
+                    <div class="flex flex-col items-center p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                        <div class="flex items-center gap-2 text-sm opacity-80 mb-1">
+                            <i id="right-box-icon" data-lucide="clock" class="w-3 h-3"></i>
+                            <span id="right-box-label">Tổng số ngày</span>
+                        </div>
+                        <span id="right-box-value" class="text-xl font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Lời khuyên & Vắc xin -->
+            <div class="w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-baby-blue animate-fade-in relative">
+                <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-2"><i data-lucide="info" class="w-5 h-5"></i><h3 class="font-bold text-lg">Thông Tư 10/2024/TT-BYT</h3></div>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">TCMR Mới</span>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <!-- Vắc xin -->
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 transition-all hover:shadow-md">
+                        <div class="flex items-center justify-between mb-3">
+                             <div class="flex items-center gap-2 text-blue-700">
+                                <i data-lucide="syringe" class="w-5 h-5"></i>
+                                <h4 class="font-bold uppercase text-xs tracking-wider">Tiêm Chủng Cần Thiết</h4>
+                             </div>
+                        </div>
+                        <ul id="vaccine-list" class="space-y-2 mb-4"></ul>
+                        
+                        <!-- Button mở Modal Bảng Lịch Tiêm -->
+                        <button onclick="openScheduleModal()" class="w-full py-3 bg-white border border-blue-200 text-blue-700 text-sm font-bold rounded-lg shadow-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="table" class="w-4 h-4"></i> Xem Bảng Lịch Tiêm Chi Tiết
+                        </button>
+                    </div>
+                    
+                    <div class="h-px bg-gray-100"></div>
+                    
+                    <!-- Mốc phát triển -->
+                    <div>
+                        <div class="flex items-center gap-2 text-indigo-600 mb-3"><i data-lucide="brain" class="w-5 h-5"></i><h4 class="font-bold uppercase text-xs tracking-wider">Mốc Phát Triển</h4></div>
+                        <ul id="milestone-list" class="space-y-2"></ul>
+                    </div>
+                    
+                    <!-- Lời khuyên & Hoạt động -->
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 text-rose-500 mb-2"><i data-lucide="heart" class="w-5 h-5"></i><h4 class="font-bold uppercase text-xs tracking-wider">Lời Khuyên</h4></div>
+                            <p id="care-tip" class="text-gray-700 text-sm leading-relaxed bg-rose-50 p-3 rounded-lg border border-rose-100"></p>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 text-amber-500 mb-2"><i data-lucide="gamepad-2" class="w-5 h-5"></i><h4 class="font-bold uppercase text-xs tracking-wider">Hoạt Động</h4></div>
+                            <p id="activity-tip" class="text-gray-700 text-sm leading-relaxed bg-amber-50 p-3 rounded-lg border border-amber-100"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BẢNG LỊCH TIÊM -->
+    <div id="schedule-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <!-- Background backdrop -->
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeScheduleModal()"></div>
+
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-2 sm:p-4 text-center">
+                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all w-full max-w-4xl border-t-4 border-baby-accent">
+                    
+                    <!-- Header Modal -->
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-200">
+                        <div class="flex flex-col">
+                            <h3 class="text-lg font-bold text-gray-900 leading-6" id="modal-title">Lịch Tiêm Chủng Mở Rộng 2024</h3>
+                            <span class="text-xs text-baby-accent font-medium mt-1">Thông tư 10/2024/TT-BYT</span>
+                        </div>
+                        <button type="button" class="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full" onclick="closeScheduleModal()">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Body Modal - Table -->
+                    <div class="p-0 overflow-x-auto">
+                        <div class="inline-block min-w-full align-middle">
+                            <table class="min-w-full vaccine-table border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th class="bg-gray-100 text-gray-900 sticky left-0 z-10 shadow-sm w-32">Vắc xin / Tuổi</th>
+                                        <th data-age="0">Sơ sinh</th>
+                                        <th data-age="2">2 tháng</th>
+                                        <th data-age="3">3 tháng</th>
+                                        <th data-age="4">4 tháng</th>
+                                        <th data-age="5">5 tháng</th>
+                                        <th data-age="9">9 tháng</th>
+                                        <th data-age="12">12 tháng</th>
+                                        <th data-age="18">18 tháng</th>
+                                        <th data-age="24">24 tháng</th>
+                                        <th data-age="84">7 tuổi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedule-table-body">
+                                    <!-- Javascript sẽ điền dữ liệu vào đây -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 bg-yellow-50 text-xs text-gray-600 border-t border-gray-200">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-3 h-3 bg-[#FFF9C4] border border-[#FBC02D] block"></span>
+                                <span>Cột được bôi màu là độ tuổi hiện tại (tương đối) của bé.</span>
+                            </div>
+                            <p>* Khoảng cách giữa các mũi tiêm 01 tháng được tính ít nhất là 28 ngày.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer Modal -->
+                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" class="w-full inline-flex justify-center rounded-md bg-baby-accent px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 sm:ml-3 sm:w-auto" onclick="closeScheduleModal()">Đã hiểu</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- 1. DỮ LIỆU CHUẨN (TCMR 10/2024/TT-BYT) ---
+        const DATABASE = {
+            0: { // Sơ sinh
+                vaccines: ["Viêm gan B (24h đầu)", "Lao - BCG (Mũi duy nhất)"],
+                milestones: ["Nắm chặt tay", "Nhìn theo vật", "Giật mình"],
+                careTip: "Bú mẹ hoàn toàn. Giữ ấm, chăm sóc rốn.",
+                activitySuggestion: "Massage nhẹ nhàng, hát ru."
+            },
+            2: { // 2 tháng
+                vaccines: ["5 trong 1 (Mũi 1)", "Uống Bại liệt (OPV L1)", "Uống Rota (Mới - Miễn phí)"],
+                milestones: ["Hóng chuyện", "Mỉm cười", "Giữ đầu tốt hơn"],
+                careTip: "Theo dõi phản ứng sau tiêm chủng (sốt).",
+                activitySuggestion: "Tummy time (nằm sấp) dưới giám sát."
+            },
+            3: { // 3 tháng
+                vaccines: ["5 trong 1 (Mũi 2)", "Uống Bại liệt (OPV L2)", "Uống Rota (Mới - Miễn phí)"],
+                milestones: ["Lẫy (lật)", "Cầm nắm đồ chơi", "Cười to"],
+                careTip: "Bé chảy dãi nhiều (chuẩn bị mọc răng).",
+                activitySuggestion: "Đưa đồ chơi cho bé với lấy."
+            },
+            4: { // 4 tháng
+                vaccines: ["5 trong 1 (Mũi 3)", "Uống Bại liệt (OPV L3)"],
+                milestones: ["Lẫy thành thạo", "Nâng cao ngực khi nằm sấp", "Soi gương"],
+                careTip: "Chưa ăn dặm. Sữa là chính.",
+                activitySuggestion: "Chơi ú òa."
+            },
+            5: { // 5 tháng
+                vaccines: ["Tiêm Bại liệt (IPV Mũi 1)"],
+                milestones: ["Lăn tròn", "Với đồ vật", "Phân biệt lạ quen"],
+                careTip: "Chuẩn bị dụng cụ ăn dặm.",
+                activitySuggestion: "Trò chuyện, gọi tên bé."
+            },
+            6: { // 6 tháng (Dịch vụ)
+                vaccines: ["Cúm (Dịch vụ)", "Phế cầu (Dịch vụ)"],
+                milestones: ["Ngồi chững", "Ăn dặm", "Chuyền đồ"],
+                careTip: "Ăn dặm: Ngọt đến mặn, loãng đến đặc.",
+                activitySuggestion: "Đọc sách tranh."
+            },
+            9: { // 9 tháng
+                vaccines: ["Sởi đơn (Mũi 1)", "Tiêm Bại liệt (IPV Mũi 2 - Mới)"],
+                milestones: ["Bò lung tung", "Vịn đứng", "Vẫy tay chào"],
+                careTip: "An toàn nhà cửa (ổ điện, góc bàn).",
+                activitySuggestion: "Chơi giấu đồ vật."
+            },
+            12: { // 12 tháng
+                vaccines: ["Viêm não Nhật Bản B (M1, M2)", "Viêm gan A (Dịch vụ)"],
+                milestones: ["Tập đi", "Nói từ đơn", "Chỉ ngón trỏ"],
+                careTip: "Ăn cháo hạt/cơm nát.",
+                activitySuggestion: "Dắt tay bé tập đi."
+            },
+            18: { // 18 tháng
+                vaccines: ["Sởi - Rubella (MR)", "DPT (Bạch hầu-Ho gà-Uốn ván Nhắc lại)"],
+                milestones: ["Đi vững", "Xúc thìa", "Nói câu ngắn"],
+                careTip: "Tập ngồi bô.",
+                activitySuggestion: "Xếp hình, đá bóng."
+            },
+            24: { // 24 tháng
+                vaccines: ["Viêm não Nhật Bản B (M3)", "Tẩy giun"],
+                milestones: ["Chạy nhảy", "Nói câu dài", "Tự cởi đồ"],
+                careTip: "Dinh dưỡng 4 nhóm chất.",
+                activitySuggestion: "Chơi đồ hàng."
+            },
+            84: { // 7 tuổi
+                vaccines: ["Bạch hầu - Uốn ván (Td - Nhắc lại - Mới)"],
+                milestones: ["Đi học lớp 1", "Thay răng"],
+                careTip: "Rèn nếp ngồi học.",
+                activitySuggestion: "Thể thao đồng đội."
+            }
+        };
+
+        const DEFAULT_DATA = {
+            vaccines: ["Kiểm tra sổ tiêm, tiêm mũi nhắc lại hoặc dịch vụ."],
+            milestones: ["Phát triển kỹ năng vận động/ngôn ngữ."],
+            careTip: "Dinh dưỡng đa dạng, ngủ đủ.",
+            activitySuggestion: "Vui chơi ngoài trời."
+        };
+
+        // --- DỮ LIỆU BẢNG (Mô phỏng hình ảnh) ---
+        // Các cột: 0, 2, 3, 4, 5, 9, 12, 18, 24, 84 (tháng)
+        const TABLE_ROWS = [
+            { name: "Viêm gan B",        0: "Trong 24h", 2: "Tiêm (5in1)", 3: "Tiêm (5in1)", 4: "Tiêm (5in1)" },
+            { name: "Lao (BCG)",         0: "Tiêm 1 lần" },
+            { name: "Bạch hầu, Ho gà, Uốn ván", 2: "Tiêm (5in1)", 3: "Tiêm (5in1)", 4: "Tiêm (5in1)", 18: "Tiêm (DPT)", 84: "Tiêm (Td)" },
+            { name: "Hib (Viêm phổi/màng não)", 2: "Tiêm (5in1)", 3: "Tiêm (5in1)", 4: "Tiêm (5in1)" },
+            { name: "Bại liệt (Uống/Tiêm)", 2: "Uống L1", 3: "Uống L2", 4: "Uống L3", 5: "Tiêm (IPV1)", 9: "Tiêm (IPV2)" },
+            { name: "Rota (Tiêu chảy)",  2: "Uống L1", 3: "Uống L2" },
+            { name: "Sởi",               9: "Tiêm L1", 18: "Tiêm (MR)" },
+            { name: "Rubella",           18: "Tiêm (MR)" },
+            { name: "Viêm não Nhật Bản", 12: "Tiêm M1, M2", 24: "Tiêm M3" }
+        ];
+
+        // --- 2. HÀM TÍNH TOÁN ---
+        function calculateAge(start, end) {
+            const b = new Date(start.y, start.m - 1, start.d);
+            const t = new Date(end.y, end.m - 1, end.d);
+            if (b > t) return null;
+
+            let years = t.getFullYear() - b.getFullYear();
+            let months = t.getMonth() - b.getMonth();
+            let days = t.getDate() - b.getDate();
+
+            if (days < 0) { months--; days += new Date(t.getFullYear(), t.getMonth(), 0).getDate(); }
+            if (months < 0) { years--; months += 12; }
+
+            return { years, months, days, totalMonths: years * 12 + months, totalDays: Math.ceil(Math.abs(t - b) / 8.64e7) };
+        }
+
+        function getAdvice(totalMonths) {
+            if (totalMonths > 84) return { ...DEFAULT_DATA, milestones: ["Bé đã lớn."], careTip: "Chuẩn bị dậy thì.", vaccines: ["Tiêm nhắc lại Td (nếu chưa tiêm lúc 7 tuổi)."] };
+            
+            const keys = Object.keys(DATABASE).map(Number).sort((a,b)=>a-b);
+            let closest = 0;
+            for (let k of keys) { if (totalMonths >= k) closest = k; }
+            return DATABASE[closest] || DEFAULT_DATA;
+        }
+
+        // --- 3. XỬ LÝ BẢNG VÀ MODAL ---
+        function openScheduleModal() {
+            document.getElementById('schedule-modal').classList.remove('hidden');
+        }
+        function closeScheduleModal() {
+            document.getElementById('schedule-modal').classList.add('hidden');
+        }
+
+        function renderTable(currentTotalMonths) {
+            const tbody = document.getElementById('schedule-table-body');
+            tbody.innerHTML = '';
+            
+            // Các mốc tuổi tương ứng với cột trong bảng (tháng)
+            // Lưu ý: 84 là 7 tuổi
+            const colAges = [0, 2, 3, 4, 5, 9, 12, 18, 24, 84];
+            
+            // Xác định cột cần highlight
+            let activeIndex = -1;
+            
+            if (currentTotalMonths >= 84) activeIndex = 9; 
+            else {
+                 for(let i = 0; i < colAges.length; i++) {
+                     if (currentTotalMonths >= colAges[i]) {
+                         activeIndex = i;
+                     }
+                 }
+            }
+
+            // Render Header Highlights
+            const headers = document.querySelectorAll('.vaccine-table th[data-age]');
+            headers.forEach((th, idx) => {
+                if (idx === activeIndex) th.classList.add('active-header');
+                else th.classList.remove('active-header');
+            });
+
+            // Render Rows
+            TABLE_ROWS.forEach((row, rIdx) => {
+                const tr = document.createElement('tr');
+                tr.className = rIdx % 2 === 0 ? 'bg-white' : 'bg-[#F1F8E9]';
+                
+                // Tên vắc xin (Sticky left)
+                const tdName = document.createElement('td');
+                tdName.className = "text-left font-semibold text-gray-700 sticky left-0 bg-inherit border-r shadow-sm z-20";
+                tdName.innerText = row.name;
+                tr.appendChild(tdName);
+
+                // Các cột dữ liệu
+                colAges.forEach((ageKey, cIdx) => {
+                    const td = document.createElement('td');
+                    const content = row[ageKey];
+                    
+                    if (cIdx === activeIndex) {
+                        td.classList.add('active-col');
+                    }
+                    
+                    if (content) {
+                        const isOral = content.toLowerCase().includes('uống');
+                        const badgeColor = isOral ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-blue-100 text-blue-800 border-blue-200';
+                        td.innerHTML = `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeColor}">${content}</span>`;
+                    } else {
+                        td.innerHTML = '';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 4. GIAO DIỆN & SỰ KIỆN CHÍNH ---
+        function createSelect(id, type) {
+            return `<div class="relative w-full">
+                <select id="${id}-${type}" onchange="handleCalc()" class="appearance-none w-full bg-white border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl leading-tight focus:outline-none focus:bg-white focus:border-baby-accent focus:ring-2 focus:ring-baby-blue transition-all cursor-pointer font-medium text-lg">
+                    <option value="" disabled selected>${type==='d'?'Ngày':(type==='m'?'Tháng':'Năm')}</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></div>
+            </div>`;
+        }
+
+        function initPicker(idContainer, prefix, isFuture) {
+            document.getElementById(idContainer).innerHTML = createSelect(prefix,'d') + createSelect(prefix,'m') + createSelect(prefix,'y');
+            const ySel = document.getElementById(prefix+'-y');
+            const mSel = document.getElementById(prefix+'-m');
+            const dSel = document.getElementById(prefix+'-d');
+            const now = new Date().getFullYear();
+            for(let i = now + (isFuture?10:0); i >= now - 50; i--) ySel.add(new Option(i, i));
+            
+            // CẬP NHẬT: Định dạng tháng TH 01, TH 02...
+            for(let i = 1; i <= 12; i++) {
+                const txt = 'TH ' + i.toString().padStart(2, '0');
+                mSel.add(new Option(txt, i));
+            }
+            
+            const updateDays = () => {
+                const y = ySel.value || now; const m = mSel.value || 1;
+                const dim = new Date(y, m, 0).getDate();
+                const cur = dSel.value;
+                dSel.innerHTML = '<option value="" disabled>Ngày</option>';
+                for(let i=1; i<=dim; i++) dSel.add(new Option(i, i));
+                if(cur && cur <= dim) dSel.value = cur;
+            };
+            ySel.addEventListener('change', updateDays);
+            mSel.addEventListener('change', updateDays);
+            for(let i=1; i<=31; i++) dSel.add(new Option(i, i));
+        }
+
+        function getDate(prefix) {
+            const d = document.getElementById(prefix+'-d').value;
+            const m = document.getElementById(prefix+'-m').value;
+            const y = document.getElementById(prefix+'-y').value;
+            return (d && m && y) ? { d: +d, m: +m, y: +y } : null;
+        }
+
+        function setDate(prefix, date) {
+            document.getElementById(prefix+'-y').value = date.getFullYear();
+            document.getElementById(prefix+'-m').value = date.getMonth()+1;
+            document.getElementById(prefix+'-m').dispatchEvent(new Event('change'));
+            document.getElementById(prefix+'-d').value = date.getDate();
+        }
+
+        function handleCalc() {
+            const birth = getDate('birth');
+            const target = getDate('target');
+            
+            if (!birth) {
+                document.getElementById('birth-msg').classList.remove('hidden'); 
+                document.getElementById('result-container').classList.add('hidden'); 
+                document.getElementById('action-area').classList.add('hidden');
+                return;
+            }
+            document.getElementById('birth-msg').classList.add('hidden'); 
+            document.getElementById('action-area').classList.remove('hidden');
+            if (!target) return;
+
+            const age = calculateAge(birth, target);
+            if (!age) {
+                document.getElementById('error-box').classList.remove('hidden'); 
+                document.getElementById('error-text').innerText = "Ngày tính phải lớn hơn hoặc bằng ngày sinh.";
+                document.getElementById('result-container').classList.add('hidden'); 
+                return;
+            }
+            document.getElementById('error-box').classList.add('hidden'); 
+            document.getElementById('result-container').classList.remove('hidden');
+
+            // Render Age Text
+            let mainHtml = '';
+            if (age.totalDays === 0) {
+                mainHtml = `<div class="flex flex-col items-center"><span class="text-3xl font-bold">Ngày chào đời! 🎂</span></div>`;
+            } else if (age.years > 0 || age.months > 0) {
+                // Đủ tháng
+                mainHtml = `<div class="flex flex-col items-center">
+                    <div class="flex items-baseline">
+                        <span class="text-5xl font-bold tracking-tight">${age.totalMonths}</span>
+                        <span class="text-xl font-medium opacity-90 ml-1">tháng</span>
+                    </div>
+                    ${age.days > 0 ? `<div class="mt-1 flex items-center gap-1 opacity-90"><span>lẻ</span><span class="text-2xl font-bold">${age.days}</span><span>ngày</span></div>` : ''}
+                </div>`;
+            } else {
+                // Không đủ tháng (chỉ có ngày)
+                mainHtml = `<span class="text-5xl font-bold tracking-tight">${age.days}</span><span class="text-xl font-medium opacity-90">ngày tuổi</span>`;
+            }
+            
+            document.getElementById('main-age-display').innerHTML = mainHtml;
+
+            // Details
+            const showDetails = (age.years > 0 || age.months > 0);
+            document.getElementById('detail-age-display').className = showDetails ? "mt-6 pt-6 border-t border-white/20 grid grid-cols-2 gap-4" : "hidden";
+            if (showDetails) {
+                document.getElementById('total-months').innerText = age.totalMonths;
+                const rLabel = document.getElementById('right-box-label');
+                const rVal = document.getElementById('right-box-value');
+                const rIcon = document.getElementById('right-box-icon');
+                if (age.totalMonths > 12) {
+                    rLabel.innerText = "Tuổi quy đổi";
+                    rIcon.setAttribute('data-lucide', 'baby');
+                    rVal.innerText = `${age.years} tuổi${age.months > 0 ? ` ${age.months} tháng` : ''}`;
+                } else {
+                    rLabel.innerText = "Tổng số ngày";
+                    rIcon.setAttribute('data-lucide', 'clock');
+                    rVal.innerText = age.totalDays;
+                }
+            }
+
+            // Advice
+            const adv = getAdvice(age.totalMonths);
+            const li = (arr, colorCls, bulletColor) => arr.map(x => `<li class="flex gap-3 text-gray-800 text-sm font-medium items-start"><span class="flex-shrink-0 w-2 h-2 rounded-full ${bulletColor} mt-1.5"></span><span>${x}</span></li>`).join('');
+            
+            document.getElementById('vaccine-list').innerHTML = li(adv.vaccines, '', 'bg-blue-500');
+            document.getElementById('milestone-list').innerHTML = li(adv.milestones, '', 'bg-indigo-400');
+            document.getElementById('care-tip').innerText = adv.careTip;
+            document.getElementById('activity-tip').innerText = adv.activitySuggestion;
+
+            // Render Modal Table with Highlighting
+            renderTable(age.totalMonths);
+
+            lucide.createIcons();
+        }
+
+        function resetApp() {
+            ['d','m','y'].forEach(k => document.getElementById('birth-'+k).value = "");
+            setDate('target', new Date());
+            handleCalc();
+        }
+
+        // Khởi tạo
+        initPicker('birth-picker', 'birth', false);
+        initPicker('target-picker', 'target', true);
+        setDate('target', new Date());
+        
+        lucide.createIcons();
+    </script>
+</body>
+</html>
